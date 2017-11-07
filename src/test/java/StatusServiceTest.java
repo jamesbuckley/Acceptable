@@ -1,50 +1,58 @@
-import com.google.common.base.Joiner;
 import com.meterware.httpunit.*;
 //import dataproviders.StatusDataProviders;
+import httphelpers.HttpRequest;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 //import org.apache.metamodel.query.SelectItem;
-import org.slf4j.LoggerFactory;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import org.json.JSONObject;
 
 
-import java.io.ByteArrayInputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 public class StatusServiceTest {
 
-    private org.slf4j.Logger logger = LoggerFactory.getLogger( this.getClass().getSimpleName() );
-
-    String baseURL = "http://localhost:8083/soteria-status-service/";
-
-    @Test(dependsOnMethods = "createStatus")
-    @Feature("StatusService")
-    @Description("Get Current Status")
-    public void getCurrentStatus() throws Exception{
-        WebConversation wc = new WebConversation();
-        WebRequest req = new GetMethodWebRequest( baseURL+"status/getCurrentStatus");
-        req.setHeaderField("Client-Id", "S0teriaStatus");
-        req.setHeaderField("Client-Password", "S0ter4a-St@tu$");
-        req.setParameter("ownerId", "2d049d1a-8d95-11e7-b307-c36a705ca323");
-        WebResponse response = wc.getResponse(req);
-        Assert.assertNotNull(response);
-
+    @BeforeClass
+    public void createBuilder(){
+        HttpRequest.setBaseUrl("http://localhost:8083/soteria-status-service/");
+        Map<String, String> defaultHeaders = new HashMap<>();
+        defaultHeaders.put("Client-Id","S0teriaStatus");
+        defaultHeaders.put("Client-Password", "S0ter4a-St@tu$");
+        HttpRequest.setDefaultHeaders(defaultHeaders);
     }
 
     @Test
     @Feature("StatusService")
+    @Severity(SeverityLevel.CRITICAL)
     @Description("Create a status for owner Id")
     public void createStatus() throws Exception{
-        JSONObject jsonRequest = new JSONObject("{ \"ownerId\": \"jamesd1a-8d95-11e7-b307-c36a705ca323\", \"statusId\": \"testStatus\" , \"reasonId\": TestReason}");
 
-        WebConversation wc = new WebConversation();
-        WebRequest req = new PostMethodWebRequest(baseURL+"status/createStatus", new ByteArrayInputStream(jsonRequest.toString().getBytes("UTF-8")),
-                "application/json");
-        req.setHeaderField("Client-Id", "S0teriaStatus");
-        req.setHeaderField("Client-Password", "S0ter4a-St@tu$");
-        WebResponse response = wc.getResponse(req);
-        Assert.assertNotNull(response);
+        Map<String, String> jsonBodyMap = new HashMap<>();
+        jsonBodyMap.put("ownerId", "jamesd1a-8d95-11e7-b307-c36a705ca323");
+        jsonBodyMap.put("statusId", "testStatus");
+        jsonBodyMap.put("reasonId", "TestReason");
+        HttpRequest request = new HttpRequest.HttpRequestBuilder("status/createStatus")
+                .postJsonRequest(jsonBodyMap)
+                .build();
+        WebResponse response = request.executeRequest();
+        Assert.assertEquals(response.getResponseCode(), 200);
+    }
+
+    @Test(dependsOnMethods = "createStatus")
+    @Feature("StatusService")
+    @Severity(SeverityLevel.CRITICAL)
+    @Description("Get Current Status for owner Id")
+    public void getCurrentStatus() throws Exception{
+        HttpRequest request = new HttpRequest.HttpRequestBuilder("status/getCurrentStatus")
+                .getRequest()
+                .setParameter("ownerId", "jamesd1a-8d95-11e7-b307-c36a705ca323")
+                .build();
+        WebResponse response = request.executeRequest();
+        Assert.assertTrue(response.getText().contains("testStatus"));
     }
 
 //    @Test (dataProvider = "csvDataProvider", dataProviderClass = StatusDataProviders.class)
@@ -54,9 +62,4 @@ public class StatusServiceTest {
 //        assert true;
 //    }
 
-    //S0teriaStatus
-    //a42f5089a8130dfc7a462132839da62c
-
-    //def clientId = request.getHeader("Client-Id");
-    //def clientPassword = request.getHeader("Client-Password")
 }
