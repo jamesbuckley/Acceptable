@@ -3,22 +3,34 @@ package httphelpers;
 import com.meterware.httpunit.*;
 import org.json.JSONObject;
 import org.xml.sax.SAXException;
+import utils.RequestUtils;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.Map;
+import java.util.Properties;
 
 public class HttpRequest {
 
+    public enum HTTPRequestType{
+        GET_REQUEST,
+        POST_REQUEST;
+    }
+
     private static String baseUrl;
-    private WebRequest webRequest;
     private static Map<String, String> defaultHeaders;
-    WebConversation wc;
+    private static Boolean recordRequest = false;
+
+    private WebRequest webRequest;
+    private WebConversation wc;
+    private Enum requestType;
+    private String messageBody;
 
     private HttpRequest(HttpRequestBuilder builder){
         this.webRequest = builder.webRequest;
         wc = new WebConversation();
+        this.requestType = builder.requestType;
+        this.messageBody = builder.messageBody;
     }
 
     public static void setBaseUrl(String baseUrl) {
@@ -30,15 +42,57 @@ public class HttpRequest {
     }
 
     public WebResponse executeRequest() throws IOException, SAXException {
-        return this.wc.getResponse(this.webRequest);
+        WebResponse response = this.wc.getResponse(this.webRequest);
+        if(recordRequest){
+             createURLMapEntry(this, response);
+        }
+        return response;
     }
 
-    static String getBaseUrl(){
+    public Enum getRequestType(){
+        return this.requestType;
+    }
+
+    public String getQueryString(){
+        return this.webRequest.getQueryString();
+    }
+
+    public String getJSONBody(){
+        return this.messageBody;
+    }
+
+    public String getUrlString(){
+        try {
+            return this.webRequest.getURL().getPath();
+        }catch (Exception e){
+           throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    private static String getBaseUrl(){
         return baseUrl;
     }
 
-    static Map<String, String> getDefaultHeaders(){
+    private static Map<String, String> getDefaultHeaders(){
         return defaultHeaders;
+    }
+
+    public static void setRecordRequest(Boolean recordRequest) {
+        HttpRequest.recordRequest = recordRequest;
+    }
+
+    private static void createURLMapEntry(HttpRequest request, WebResponse response){
+        Properties prop = new Properties();
+        try(FileWriter fw = new FileWriter("request.map", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            PrintWriter out = new PrintWriter(bw))
+        {
+            String mapKey = RequestUtils.prepareRequestMapKey(request);
+            prop.setProperty(mapKey, response.getText());
+            prop.store(out, null);
+        }catch (Exception e){
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
     public static class HttpRequestBuilder {
@@ -46,6 +100,8 @@ public class HttpRequest {
         private String requestUrl;
         private Map<String, String> requestHeaders;
         private WebRequest webRequest;
+        private Enum requestType;
+        private String messageBody;
 
         public HttpRequestBuilder(String requestUrl){
             this.requestUrl = requestUrl;
@@ -66,12 +122,14 @@ public class HttpRequest {
 
         public HttpRequestBuilder getRequest(){
             this.webRequest = new GetMethodWebRequest(HttpRequest.getBaseUrl() + requestUrl);
+            this.requestType = HTTPRequestType.GET_REQUEST;
             return this;
         }
 
         public HttpRequestBuilder postJsonRequest(Map<String, String> jsonBody){
             ByteArrayInputStream jsonBodyByteIS = this.getJsonBody(jsonBody);
             this.webRequest = new PostMethodWebRequest(HttpRequest.getBaseUrl() + requestUrl, jsonBodyByteIS, "application/json");
+            this.requestType = HTTPRequestType.POST_REQUEST;
             return this;
         }
 
@@ -85,6 +143,7 @@ public class HttpRequest {
 
         private ByteArrayInputStream getJsonBody(Map<String, String> jsonStringMap){
             JSONObject jsonObject = new JSONObject(jsonStringMap);
+            this.messageBody = jsonObject.toString();
             return new ByteArrayInputStream(jsonObject.toString().getBytes(Charset.forName("UTF-8")));
         }
     }
