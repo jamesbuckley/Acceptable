@@ -1,3 +1,4 @@
+import annotations.AcceptableCandidate;
 import com.meterware.httpunit.GetMethodWebRequest;
 import com.meterware.httpunit.WebConversation;
 import com.meterware.httpunit.WebRequest;
@@ -37,5 +38,11 @@ public class DummyTest {
 //        assertNotNull(resp);
 //        assertEquals("{json=string value}", resp.getText());
 //    }
+
+
+    @AcceptableCandidate(reason = "This method requires the status service", previouslyTested = false)
+    public void aMethod(){
+
+    }
 
 }

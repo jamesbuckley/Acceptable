@@ -1,17 +1,9 @@
 import com.meterware.httpunit.*;
-//import dataproviders.StatusDataProviders;
 import httphelpers.HttpRequest;
 import io.qameta.allure.*;
-//import org.apache.metamodel.query.SelectItem;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import utils.RequestUtils;
-
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
 
